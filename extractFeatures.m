@@ -1,4 +1,4 @@
-function [feature_table] = extractFeatures(dataChTimeTr,includedFeatures,Fs,gitfuncs)
+function [feature_table] = extractFeatures(dataChTimeTr, includedFeatures)
     
     % List of channels to include (can change to only use some)
     includedChannels = 1:size(dataChTimeTr,1);
@@ -6,6 +6,7 @@ function [feature_table] = extractFeatures(dataChTimeTr,includedFeatures,Fs,gitf
     % Empty feature table
     feature_table = table();
 
+    
     for f = 1:length(includedFeatures)
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -25,35 +26,36 @@ function [feature_table] = extractFeatures(dataChTimeTr,includedFeatures,Fs,gitf
             % signal from the mean. In this case, the signal is all of the
             % timepoints for a single channel and trial.
             %(fvalues = trials x channels)
-            case 'var'
-                fvalues = squeeze(var(dataChTimeTr,0,2))';
-             
-            % Write your own options here by using case 'option name'
-            % 'myawesomefeature'
-                % my awesome feature code that outputs fvalues
-            
-            case 'rms'
-                fvalues = squeeze(rms(dataChTimeTr,2))';
+            case 'variance'
+                fvalues = squeeze(var(dataChTimeTr, 0, 2))';
 
-            case 'mav'
-                fvalues = squeeze(mad(dataChTimeTr,0,2))';
+            case 'mean_abs_value'
+                fvalues = squeeze(mad(dataChTimeTr, 0, 2))';
 
-            case 'meanfreq'
-                fvalues = zeros(size(includedChannels,2),size(dataChTimeTr,3));
-                for ch = includedChannels
-                    fvalues(ch,:) = meanfreq(squeeze(dataChTimeTr(ch,:,:)),Fs);
+            case 'mean_freq'
+                fvalues = zeros([size(dataChTimeTr, 1), size(dataChTimeTr, 3)]);
+                for i=1:size(dataChTimeTr, 1)
+                    fvalues(i, :) = meanfreq(squeeze(dataChTimeTr(i, :, :)));
                 end
+                
                 fvalues = fvalues';
-            
-            case gitfuncs
-                fvalues = zeros(size(includedChannels,2),size(dataChTimeTr,3));
-                for ch = includedChannels
-                    for t = 1:size(dataChTimeTr,3)
-                        squeezed_data = squeeze(dataChTimeTr(ch,:,t));
-                        fvalues(ch,t) = jfemg(includedFeatures{f}, squeezed_data);
-                    end
+
+            case 'slope_sign_change'
+                fvalues = zeros([size(dataChTimeTr, 3), size(dataChTimeTr, 1)]);
+                for i=1:size(dataChTimeTr, 1)
+                    diffs = diff(squeeze(dataChTimeTr(1,:,:)));
+                    count = sum(diff(sign(diffs))~=0);
+                    fvalues(:, i) = count';
                 end
-                fvalues = fvalues';
+                    
+            case 'root_mean_square'
+                fvalues = squeeze(rms(dataChTimeTr, 2))';
+
+            case 'kurtosis'
+                fvalues = squeeze(kurtosis(dataChTimeTr, 1, 2))';
+
+            case 'skewness'
+                fvalues = squeeze(skewness(dataChTimeTr, 1, 2))';
 
             otherwise
                 % If you don't recognize the feature name in the cases
@@ -66,7 +68,7 @@ function [feature_table] = extractFeatures(dataChTimeTr,includedFeatures,Fs,gitf
         % Put feature values (fvalues) into a table with appropriate names
         % fvalues should have rows = number of trials
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        
+
         % If there is only one feature, just name it the feature name
         if size(fvalues,2) == 1
             feature_table = [feature_table table(fvalues,...
@@ -90,4 +92,8 @@ function [feature_table] = extractFeatures(dataChTimeTr,includedFeatures,Fs,gitf
             end
         end
     end
+
+
+    
+
 end
